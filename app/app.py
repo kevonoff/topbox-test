@@ -1,5 +1,6 @@
 from bson import json_util, ObjectId
-from flask import Flask
+from datetime import datetime
+from flask import Flask, request
 
 from app.helpers import mongo_client
 
@@ -37,10 +38,28 @@ def engagements_by_id(engagement_id):
     return json_util.dumps(db.engagements.find_one({'_id': engagement_object_id}))
 
 
-@app.route('/interactions')
-def interactions():
-    # TODO: Modify this endpoint according to problem statement!
-    return json_util.dumps(db.interactions.find({}))
+@app.route('/engagements/<engagement_id>/interactions')
+def interactions(engagement_id):
+    engagement_object_id = ObjectId(engagement_id)
+    start_date = request.args.get('startDate')
+    end_date = request.args.get('endDate')
+    query = {'$and': [{'engagementId': engagement_object_id}]}
+
+    if start_date is not None:
+        try:
+            formatted_date = datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S.%f')
+        except ValueError:
+            formatted_date = datetime.strptime(start_date, '%Y-%m-%d')
+        query['$and'].append({'interactionDate': {'$gte': formatted_date}})
+
+    if end_date is not None:
+        try:
+            formatted_date = datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S.%f')
+        except ValueError:
+            formatted_date = datetime.strptime(end_date, '%Y-%m-%d')
+        query['$and'].append({'interactionDate': {'$gte': formatted_date}})
+
+    return json_util.dumps(db.interactions.find(query))
 
 
 @app.route('/interactions/<interaction_id>')
